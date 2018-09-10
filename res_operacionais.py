@@ -1,8 +1,10 @@
 from datetime import datetime, date
+import numbers
 
 from bokeh.io import curdoc
 from bokeh.layouts import widgetbox, layout
-from bokeh.models import ColumnDataSource, FactorRange, LabelSet
+from bokeh.models import ColumnDataSource, FactorRange, LabelSet, Range1d
+from bokeh.models import HoverTool
 from bokeh.models.formatters import NumeralTickFormatter
 from bokeh.models.widgets import DateRangeSlider, Select, Button, Div, CheckboxGroup
 from bokeh.plotting import figure
@@ -40,17 +42,22 @@ produtos = CheckboxGroup(labels=["Produto_A", "Produto_B", "Produto_C"],
 div1 = Div(text="<br><h5>Medida</h5>")
 div2 = Div(text="<br><h5>Datas</h5>")
 div3 = Div(text="<br><h5>Produtos</h5>")
-# hover = HoverTool(tooltips=[("word", "@words")])
+hover = HoverTool(tooltips=[
+        ("Valores", "@y{0.0} m€"),
+        ("Mês",  "@x" )],
+    formatters={
+        'Mês' : 'printf',
+    },
+    mode='vline'
+)
 
-def refresh_data(dataset, init=0):
+def refresh_data(dataset):
     """Refreshes the source.data based on the dataset provided"""
-    if init == 1:
-        start_date, end_date = dates.value
-        dataset_filtered = dataset[(dataset['Data']>=start_date) & (dataset['Data']<=end_date)]
-    else:
+    if isinstance(dates.value[0], numbers.Integral):
         start_date = datetime.fromtimestamp(dates.value[0]/1000).date()
         end_date = datetime.fromtimestamp(dates.value[1]/1000).date()
-        dataset_filtered = dataset[(dataset['Data']>=start_date) & (dataset['Data']<=end_date)]
+    else:
+        start_date, end_date = dates.value
     # Apply filters
     dataset_filtered = dataset[(dataset['Data']>=start_date) & (dataset['Data']<=end_date)]
     lista_produtos = [mapa_produtos[i] for i in produtos.active]
@@ -66,7 +73,7 @@ def refresh_data(dataset, init=0):
                    'labels': labels,
                    'color': color}
 
-refresh_data(dataset, init=1) # initialize data
+refresh_data(dataset) # initialize data
 
 
 # Creating the figure
@@ -75,18 +82,12 @@ x_range = x_range[:len(x_range)-4] # remove last 4 months, no data
 
 plot = figure(x_range=FactorRange(*x_range), y_range=(0, max(source.data['y'])*1.2),
               title=select.value,
-              # tools=[hover],
+              tools=[hover],
               plot_height=500, plot_width=800,
               sizing_mode='stretch_both',
               toolbar_location=None)
 
 plot.vbar(x='x', top='y', width=0.7, source=source, fill_color='color')
-
-# Adding custom labels
-# labels = LabelSet(x='x', y='y', text='labels', source=source, level='glyph',render_mode='css',
-#                  text_font='times',text_font_size='11px',text_font_style='bold',
-#                  y_offset=5,text_align='center',text_color='black')
-# plot.add_layout(labels)
 
 
 def generate_data():
